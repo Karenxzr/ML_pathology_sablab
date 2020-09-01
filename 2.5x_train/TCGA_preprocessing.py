@@ -17,6 +17,7 @@ import argparse
 import random
 from multiprocessing import Pool
 from multiprocessing.dummy import Pool as ThreadPool
+import histomicstk as htk
 
 def get_slidepaths():
     TCGA_dir = '/nfs02/data/TCGA/TCGA_brain/'
@@ -53,6 +54,23 @@ def optical_density(tile):
     tile = tile.astype(np.float64)
     od = -np.log((tile + 1) / 240)
     return od
+
+
+def color_norm(inputimg, ref_img_path,
+stain_unmixing_routine_params= {'stains': ['hematoxylin', 'eosin'],
+'stain_unmixing_method': 'macenko_pca'}):
+    """
+    Color Normalization to a reference image, mask was used to avoid background color change
+    ---ref_img_path: path of reference image
+    example: '/Image/WSI/TCGA-AN-A0FK-01Z-00-DX1.8966A1D5-CE3A-4B08-A1F6-E613BEB1ABD1_2_4.jpg'
+    ---inputimg: RGB image
+    """
+    refimg=skimage.io.imread(ref_img_path)[:,:,:3]
+    mask_img = np.dot(inputimg[...,:3], [0.299, 0.587, 0.114])
+    mask_img=np.where(mask_img<=215,False,True)
+    img_norm=htk.preprocessing.color_normalization.deconvolution_based_normalization(inputimg,
+    im_target=refimg,stain_unmixing_routine_params=stain_unmixing_routine_params,mask_out=mask_img)
+    return img_norm
 
 def keep_tile(tile, tile_size, tissue_threshold):
     """
